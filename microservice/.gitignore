@@ -1,0 +1,25 @@
+# Ignore Python cache files
+__pycache__/
+
+# Ignore the virtual environment folder
+env/
+
+# Ignore environment variable files
+.env
+
+# Byte-compiled Python files
+*.pyc
+
+# Ignore system files
+.DS_Store
+
+# Ignore LaTeX auxiliary files (optional, if you generate other files besides the .tex)
+*.aux
+*.log
+*.out
+
+# If you use Jupyter notebooks and don't want to track them
+*.ipynb_checkpoints/
+
+# If you use Visual Studio Code
+.vscode/
