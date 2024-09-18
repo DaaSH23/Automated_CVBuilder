@@ -90,7 +90,8 @@ form-data:
 - Starts a container in AWS ECS for compiling the laTex file to pdf
 POST -->  /start-task
 body:
-{
+```bash
+  {
     "environment_variables": [
      {"name": "LATEX_FILE_URL", "value": ""},
       {"name": "AWS_ACCESS_KEY_ID", "value": ""},
@@ -99,6 +100,7 @@ body:
       {"name": "S3_OUTPUT_BUCKET", "value": ""}
     ]
 }
+```
 
 
 ## Usage
