@@ -3,14 +3,28 @@
 from fastapi import FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+import re
+import os
+import boto3
 from openai import AzureOpenAI
 from dotenv import load_dotenv
-import os
-import re
+from typing import List
+print(boto3.__version__)
+
 
 load_dotenv()
 
 app = FastAPI()
+
+#----------------AWS ECS client credentials--------------
+ecs_client = boto3.client('ecs', region_name='eu-north-1')
+
+class EnvironmentVariable(BaseModel):
+    name: str
+    value: str
+    
+class taskVariables(BaseModel):
+    environment_variables: List[EnvironmentVariable]
 
 #----------------Azure openai credentials----------------
 openai_key = os.getenv("AZURE_OPENAI_APIKEY")
@@ -38,7 +52,7 @@ async def generate_Context(data: JobDescriptionInput):
             return {"erro": "Job description required!"}
         
         #---------------------Check for latex file---------------------
-        if not os.path.exists("/ResumeLatex.tex"):
+        if not os.path.exists("ResumeLatex.tex"):
             return {"Latex Error": " Latex file not found, please upload the latex file."}
         
         #-------------Retrive the section skills section from latex---------------
@@ -148,3 +162,38 @@ async def update_latex_function(update_Content: str):
        return ("Error: ", {str(ex)})
 
 
+#----------------Endpoint for automate task ECS--------------------
+@app.post("/start-task")
+async def start_task(request: taskVariables):
+    try:
+        # overrides of env variables
+        env_var = [
+            {"name": env.name, "value": env.value}
+            for env in request.environment_variables
+        ]
+        
+        response = ecs_client.run_task(
+            cluster='arn:aws:ecs:eu-north-1:992382518819:cluster/autoCV-cluster',
+            taskDefinition='arn:aws:ecs:eu-north-1:992382518819:task-definition/autoCVBuild-task',
+            launchType='FARGATE',
+            count=1,
+            overrides={
+                'containerOverrides': [
+                    {
+                        'name': 'autoCVBuild-image',  # Replace with your container name
+                        'environment': env_var
+                    }
+                ]
+            },
+            networkConfiguration={
+                'awsvpcConfiguration': {
+                    'subnets': ['subnet-0e346a33e62dbad2f', 'subnet-0eca283530f0c922c', 'subnet-06aedc4aa2323402e'],  
+                    'securityGroups': ['sg-0cc950b85b2a331f9'],
+                    'assignPublicIp': 'ENABLED'
+                }
+            }
+        )
+        
+        return {"message": "Task started successfully", "taskArn": response['tasks'][0]['taskArn']}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
